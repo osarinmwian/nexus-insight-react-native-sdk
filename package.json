@@ -15,9 +15,11 @@
   "peerDependencies": {
     "react-native": "*"
   },
+
   "devDependencies": {
     "typescript": "*"
   },
+
   "repository": {
     "type": "git",
     "url": "https://github.com/osarinmwian/nexus-insight"
