@@ -1,0 +1,7 @@
+d in src/
+tsconfig.json
+*.test.ts
+*.test.js
+example/
+.git/
+.gitignore
