@@ -51,6 +51,7 @@ class NexusInsight {
   private screenStartTime: number = Date.now();
 
   constructor(config: AnalyticsConfig) {
+    console.log('🔧 Initializing NexusInsight with config:', { apiKey: config.apiKey?.substring(0, 10) + '...', dashboardUrl: config.dashboardUrl });
     if (!config.apiKey) {
       throw new Error('API key is required. Get your key from https://nexus-insight.com');
     }
@@ -68,6 +69,7 @@ class NexusInsight {
     }
     
     this.isValidKey = this.validateApiKey(config.apiKey);
+    console.log('🔑 API key validation:', this.isValidKey);
     this.sessionId = Date.now().toString();
     
     if (this.isValidKey) {
@@ -79,11 +81,13 @@ class NexusInsight {
 
   private async init(): Promise<void> {
     try {
+      console.log('🚀 Starting SDK initialization...');
       this.userId = this.config.userId || 
         await AsyncStorage.getItem('nexus_user_id') || 
         this.generateUserId();
       
       await AsyncStorage.setItem('nexus_user_id', this.userId);
+      console.log('👤 User ID set:', this.userId);
       
       // Restore current screen if available
       this.currentScreen = await AsyncStorage.getItem('nexus_current_screen');
@@ -101,6 +105,7 @@ class NexusInsight {
         // AppState not available
       }
       this.isInitialized = true;
+      console.log('✅ SDK initialized successfully');
       
       await this.trackEvent('sdk_initialized', {
         currentScreen: this.currentScreen
