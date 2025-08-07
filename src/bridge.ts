@@ -12,10 +12,12 @@ class DataBridge {
     try {
       const events = await AsyncStorage.getItem('nexus_events');
       const userId = await AsyncStorage.getItem('nexus_user_id');
+      const currentScreen = await AsyncStorage.getItem('nexus_current_screen');
       
       console.log('🔄 Syncing to dashboard:', { 
         eventCount: events ? JSON.parse(events).length : 0, 
         userId,
+        currentScreen,
         timestamp: new Date().toISOString()
       });
       
@@ -41,7 +43,11 @@ class DataBridge {
                 'Content-Type': 'application/json',
                 'ngrok-skip-browser-warning': 'true'
               },
-              body: JSON.stringify({ events: JSON.parse(events), userId })
+              body: JSON.stringify({ 
+                events: JSON.parse(events), 
+                userId,
+                currentScreen 
+              })
             });
             
             if (response.ok) {
