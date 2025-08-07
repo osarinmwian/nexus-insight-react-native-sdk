@@ -125,6 +125,7 @@ class NexusInsight {
   }
 
   public async trackEvent(eventName: string, properties: EventProperties = {}): Promise<void> {
+    console.log('🚀 Attempting to track', eventName, 'event...');
     if (!this.isInitialized || !this.isValidKey) {
       console.warn('NexusInsight not initialized or invalid API key');
       return;
@@ -145,6 +146,9 @@ class NexusInsight {
       const sanitizedEvent = SecurityManager.sanitizeEvent(event);
       if (sanitizedEvent) {
         await this.storeEvent(sanitizedEvent);
+        console.log('✅', eventName, 'event tracked');
+      } else {
+        console.log('⚠️ Event sanitization failed');
       }
     } catch (error) {
       console.error('Failed to track event:', error);
@@ -236,7 +240,9 @@ class NexusInsight {
 
   private async storeEvent(event: AnalyticsEvent): Promise<void> {
     try {
+      console.log('🔄 Storing event:', event.eventName, 'with key:', this.config.storageKey);
       const existingEvents = await AsyncStorage.getItem(this.config.storageKey!);
+      console.log('📦 Existing events:', existingEvents ? 'found' : 'none');
       const events = existingEvents ? JSON.parse(existingEvents) : [];
       events.push(event);
       
@@ -245,6 +251,7 @@ class NexusInsight {
       }
       
       await AsyncStorage.setItem(this.config.storageKey!, JSON.stringify(events));
+      console.log('✅ Event stored. Total events:', events.length);
     } catch (error) {
       console.error('Failed to store event:', error);
     }
