@@ -30,6 +30,13 @@ class DataBridge {
       }
       
       // Mobile to web bridge - use dynamic URL if provided
+      if (typeof fetch !== 'undefined') {
+        console.log('📡 Attempting to send events:', {
+          hasEvents: events && events !== '[]',
+          eventData: events ? events.substring(0, 100) + '...' : 'null'
+        });
+      }
+      
       if (events && events !== '[]' && typeof fetch !== 'undefined') {
         const urls = this.dashboardUrl 
           ? [`${this.dashboardUrl}/api/sync`, 'http://localhost:3000/api/sync']
