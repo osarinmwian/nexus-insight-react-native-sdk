@@ -46,6 +46,9 @@ class NexusInsight {
   private userId: string | null = null;
   private isInitialized = false;
   private isValidKey = false;
+  private currentScreen: string | null = null;
+  private previousScreen: string | null = null;
+  private screenStartTime: number = Date.now();
 
   constructor(config: AnalyticsConfig) {
     if (!config.apiKey) {
@@ -82,6 +85,9 @@ class NexusInsight {
       
       await AsyncStorage.setItem('nexus_user_id', this.userId);
       
+      // Restore current screen if available
+      this.currentScreen = await AsyncStorage.getItem('nexus_current_screen');
+      
       if (this.config.enableCrashReporting) {
         this.setupCrashHandler();
       }
@@ -96,7 +102,9 @@ class NexusInsight {
       }
       this.isInitialized = true;
       
-      await this.trackEvent('sdk_initialized');
+      await this.trackEvent('sdk_initialized', {
+        currentScreen: this.currentScreen
+      });
       DataBridge.startAutoSync();
       
       // Auto-track app lifecycle events
@@ -145,7 +153,20 @@ class NexusInsight {
 
   public async trackScreen(screenName: string, properties: EventProperties = {}): Promise<void> {
     if (!this.isValidKey) return;
-    await this.trackEvent('screen_view', { screenName, ...properties });
+    
+    // Store current screen name
+    this.currentScreen = screenName;
+    await AsyncStorage.setItem('nexus_current_screen', screenName);
+    
+    await this.trackEvent('screen_view', { 
+      screenName, 
+      previousScreen: this.previousScreen,
+      screenDuration: this.getScreenDuration(),
+      ...properties 
+    });
+    
+    this.previousScreen = screenName;
+    this.screenStartTime = Date.now();
   }
 
   public async trackCrash(error: Error, isFatal = false): Promise<void> {
@@ -181,6 +202,26 @@ class NexusInsight {
 
   public async setUserProperties(properties: EventProperties): Promise<void> {
     await this.trackEvent('user_properties_updated', properties);
+  }
+
+  public getCurrentScreen(): string | null {
+    return this.currentScreen;
+  }
+
+  public async getScreenHistory(): Promise<string[]> {
+    try {
+      const events = await this.getAllEvents();
+      return events
+        .filter(e => e.eventName === 'screen_view')
+        .map(e => e.properties.screenName)
+        .filter(Boolean);
+    } catch {
+      return [];
+    }
+  }
+
+  private getScreenDuration(): number {
+    return this.screenStartTime ? Date.now() - this.screenStartTime : 0;
   }
 
   private async getDeviceInfo(): Promise<DeviceInfo> {
