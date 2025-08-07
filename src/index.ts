@@ -13,6 +13,7 @@ export interface AnalyticsConfig {
   enableCrashReporting?: boolean;
   maxEvents?: number;
   storageKey?: string;
+  dashboardUrl?: string;
 }
 
 export interface EventProperties {
@@ -57,6 +58,11 @@ class NexusInsight {
       storageKey: 'nexus_events',
       ...config
     };
+    
+    // Pass dashboardUrl to DataBridge
+    if (config.dashboardUrl) {
+      DataBridge.setDashboardUrl(config.dashboardUrl);
+    }
     
     this.isValidKey = this.validateApiKey(config.apiKey);
     this.sessionId = Date.now().toString();

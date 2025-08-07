@@ -2,6 +2,12 @@
 import AsyncStorage from './storage';
 
 class DataBridge {
+  private static dashboardUrl: string | null = null;
+  
+  static setDashboardUrl(url: string): void {
+    this.dashboardUrl = url;
+  }
+  
   static async syncToDashboard(): Promise<void> {
     try {
       const events = await AsyncStorage.getItem('nexus_events');
@@ -20,12 +26,11 @@ class DataBridge {
         console.log('💾 Data synced to localStorage');
       }
       
-      // Mobile to web bridge - try ngrok URL first, then localhost
+      // Mobile to web bridge - use dynamic URL if provided
       if (events && events !== '[]' && typeof fetch !== 'undefined') {
-        const urls = [
-          'https://82e7aea83708.ngrok-free.app/api/sync',
-          'http://localhost:3000/api/sync'
-        ];
+        const urls = this.dashboardUrl 
+          ? [`${this.dashboardUrl}/api/sync`, 'http://localhost:3000/api/sync']
+          : ['http://localhost:3000/api/sync'];
         
         for (const url of urls) {
           try {
