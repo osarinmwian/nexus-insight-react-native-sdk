@@ -16,8 +16,8 @@ class DataBridge {
         console.log('Data synced to localStorage');
       }
       
-      // Mobile to web bridge - use fetch to send data to dashboard
-      if (events && events !== '[]') {
+      // Mobile to web bridge - try to use fetch if available
+      if (events && events !== '[]' && typeof fetch !== 'undefined') {
         try {
           await fetch('http://localhost:3000/api/sync', {
             method: 'POST',
