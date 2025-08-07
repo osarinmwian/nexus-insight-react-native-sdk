@@ -1,16 +1,12 @@
 // Security utilities for MITM protection
 class SecurityManager {
   static validateData(data: any): boolean {
-    if (!data || typeof data !== 'object') {
-      console.log('❌ Data validation failed: not object or null');
-      return false;
-    }
+    if (!data || typeof data !== 'object') return false;
     
     // Only check for explicitly set suspicious properties, not inherited ones
     const suspiciousKeys = ['constructor', 'prototype'];
-    for (let i = 0; i < suspiciousKeys?.length; i++) {
-      if (data?.hasOwnProperty(suspiciousKeys[i])) {
-        console.log('❌ Data validation failed: suspicious key found:', suspiciousKeys[i]);
+    for (let i = 0; i < suspiciousKeys.length; i++) {
+      if (data.hasOwnProperty(suspiciousKeys[i])) {
         return false;
       }
     }
@@ -19,23 +15,18 @@ class SecurityManager {
   }
 
   static sanitizeEvent(event: any): any {
-    console.log('🔒 Sanitizing event:', event?.eventName);
-    if (!this.validateData(event)) {
-      console.log('❌ Event validation failed');
-      return null;
-    }
+    if (!this.validateData(event)) return null;
     
     const sanitized: any = {};
     const allowedKeys = ['eventName', 'properties', 'userId', 'sessionId', 'timestamp', 'deviceInfo', 'id'];
     
-    for (let i = 0; i < allowedKeys?.length; i++) {
+    for (let i = 0; i < allowedKeys.length; i++) {
       const key = allowedKeys[i];
       if (event[key] !== undefined) {
         sanitized[key] = this.sanitizeValue(event[key]);
       }
     }
     
-    console.log('✅ Event sanitized successfully');
     return sanitized;
   }
 

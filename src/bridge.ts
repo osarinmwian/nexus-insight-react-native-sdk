@@ -3,6 +3,7 @@ import AsyncStorage from './storage';
 
 class DataBridge {
   private static dashboardUrl: string | null = null;
+  private static lastSyncedEventCount = 0;
   
   static setDashboardUrl(url: string): void {
     this.dashboardUrl = url;
@@ -12,41 +13,31 @@ class DataBridge {
     try {
       const events = await AsyncStorage.getItem('nexus_events');
       const userId = await AsyncStorage.getItem('nexus_user_id');
-      
-      console.log('🔍 Raw storage data:', { events: events?.substring(0, 100), userId });
       const currentScreen = await AsyncStorage.getItem('nexus_current_screen');
       
-      console.log('🔄 Syncing to dashboard:', { 
-        eventCount: events ? JSON.parse(events).length : 0, 
-        userId,
-        currentScreen,
-        dashboardUrl: this.dashboardUrl,
-        timestamp: new Date().toISOString()
-      });
+      const currentEventCount = events ? JSON.parse(events).length : 0;
+      
+      // Only sync if there are new events
+      if (currentEventCount === this.lastSyncedEventCount) {
+        return;
+      }
+      
+      this.lastSyncedEventCount = currentEventCount;
       
       // Web sync
       if (typeof window !== 'undefined' && (window as any).localStorage) {
         (window as any).localStorage.setItem('nexus_events', events || '[]');
         (window as any).localStorage.setItem('nexus_user_id', userId || '');
-        console.log('💾 Data synced to localStorage');
       }
       
-      // Mobile to web bridge - use dynamic URL if provided
-      if (typeof fetch !== 'undefined') {
-        console.log('📡 Attempting to send events:', {
-          hasEvents: events && events !== '[]',
-          eventData: events ? events.substring(0, 100) + '...' : 'null'
-        });
-      }
-      
-      if (events && events !== '[]' && typeof fetch !== 'undefined') {
+      // Mobile to web bridge - only try if we have events and are on web
+      if (events && events !== '[]' && typeof fetch !== 'undefined' && typeof window !== 'undefined') {
         const urls = this.dashboardUrl 
-          ? [`${this.dashboardUrl}/api/sync`, 'http://localhost:3000/api/sync']
+          ? [`${this.dashboardUrl}/api/sync`]
           : ['http://localhost:3000/api/sync'];
         
         for (const url of urls) {
           try {
-            console.log(`📡 Sending ${JSON.parse(events).length} events to ${url}`);
             const response = await fetch(url, {
               method: 'POST',
               headers: { 
@@ -60,17 +51,14 @@ class DataBridge {
               })
             });
             
-            if (response.ok) {
-              console.log(`✅ Data sent successfully to ${url}`);
-              break;
-            }
+            if (response.ok) break;
           } catch (e) {
-            console.log(`❌ Failed to send to ${url}:`, e.message);
+            // Silent fail for mobile apps
           }
         }
       }
     } catch (error) {
-      console.error('❌ Sync failed:', error);
+      // Silent fail
     }
   }
 
@@ -119,20 +107,20 @@ class DataBridge {
   }
 
   static startAutoSync(): void {
-    console.log('🚀 Starting auto-sync to dashboard');
-    
     // Immediate sync
     this.syncToDashboard();
     
-    // Regular sync every 2 seconds for immediate feedback
+    // Check for new events every 5 seconds, but only sync if there are changes
     if (typeof setInterval !== 'undefined') {
       setInterval(() => {
         this.syncToDashboard();
-      }, 2000);
-      console.log('✅ Auto-sync interval started (2s)');
-    } else {
-      console.log('⚠️ setInterval not available, using manual sync only');
+      }, 5000);
     }
+  }
+  
+  static triggerSync(): void {
+    // Force sync when new events are added
+    this.syncToDashboard();
   }
 }
 

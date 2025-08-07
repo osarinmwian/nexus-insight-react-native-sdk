@@ -257,6 +257,9 @@ class NexusInsight {
       
       await AsyncStorage.setItem(this.config.storageKey!, JSON.stringify(events));
       console.log('✅ Event stored. Total events:', events.length);
+      
+      // Trigger immediate sync when new events are added
+      DataBridge.triggerSync();
     } catch (error) {
       console.error('Failed to store event:', error);
     }
