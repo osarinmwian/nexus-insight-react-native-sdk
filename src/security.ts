@@ -1,19 +1,29 @@
 // Security utilities for MITM protection
 class SecurityManager {
   static validateData(data: any): boolean {
-    if (!data || typeof data !== 'object') return false;
+    if (!data || typeof data !== 'object') {
+      console.log('❌ Data validation failed: not object or null');
+      return false;
+    }
     
     // Check for suspicious properties
     const suspiciousKeys = ['__proto__', 'constructor', 'prototype'];
     for (let i = 0; i < suspiciousKeys.length; i++) {
-      if (suspiciousKeys[i] in data) return false;
+      if (suspiciousKeys[i] in data) {
+        console.log('❌ Data validation failed: suspicious key found:', suspiciousKeys[i]);
+        return false;
+      }
     }
     
     return true;
   }
 
   static sanitizeEvent(event: any): any {
-    if (!this.validateData(event)) return null;
+    console.log('🔒 Sanitizing event:', event?.eventName);
+    if (!this.validateData(event)) {
+      console.log('❌ Event validation failed');
+      return null;
+    }
     
     const sanitized: any = {};
     const allowedKeys = ['eventName', 'properties', 'userId', 'sessionId', 'timestamp', 'deviceInfo', 'id'];
@@ -25,6 +35,7 @@ class SecurityManager {
       }
     }
     
+    console.log('✅ Event sanitized successfully');
     return sanitized;
   }
 
