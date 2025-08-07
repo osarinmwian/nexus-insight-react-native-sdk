@@ -6,10 +6,10 @@ class SecurityManager {
       return false;
     }
     
-    // Check for suspicious properties
-    const suspiciousKeys = ['__proto__', 'constructor', 'prototype'];
-    for (let i = 0; i < suspiciousKeys.length; i++) {
-      if (suspiciousKeys[i] in data) {
+    // Only check for explicitly set suspicious properties, not inherited ones
+    const suspiciousKeys = ['constructor', 'prototype'];
+    for (let i = 0; i < suspiciousKeys?.length; i++) {
+      if (data?.hasOwnProperty(suspiciousKeys[i])) {
         console.log('❌ Data validation failed: suspicious key found:', suspiciousKeys[i]);
         return false;
       }
@@ -28,7 +28,7 @@ class SecurityManager {
     const sanitized: any = {};
     const allowedKeys = ['eventName', 'properties', 'userId', 'sessionId', 'timestamp', 'deviceInfo', 'id'];
     
-    for (let i = 0; i < allowedKeys.length; i++) {
+    for (let i = 0; i < allowedKeys?.length; i++) {
       const key = allowedKeys[i];
       if (event[key] !== undefined) {
         sanitized[key] = this.sanitizeValue(event[key]);
@@ -46,7 +46,7 @@ class SecurityManager {
     if (typeof value === 'object' && value !== null) {
       const sanitized: any = {};
       const keys = Object.keys(value);
-      for (let i = 0; i < keys.length; i++) {
+      for (let i = 0; i < keys?.length; i++) {
         const k = keys[i];
         if (typeof k === 'string' && k.length < 100) {
           sanitized[k] = this.sanitizeValue(value[k]);
