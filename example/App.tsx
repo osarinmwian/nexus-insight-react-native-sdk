@@ -3,6 +3,7 @@ import { View, Button, Text, StyleSheet } from 'react-native';
 import NexusInsight from '../src/index';
 
 const analytics = new NexusInsight({
+  apiKey: 'nxs_test_demo12345678', // Add API key here
   enableCrashReporting: true,
   maxEvents: 500
 });

@@ -18,6 +18,7 @@ class DataBridge {
         eventCount: events ? JSON.parse(events).length : 0, 
         userId,
         currentScreen,
+        dashboardUrl: this.dashboardUrl,
         timestamp: new Date().toISOString()
       });
       
