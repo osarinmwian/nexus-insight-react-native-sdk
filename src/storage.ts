@@ -20,7 +20,14 @@ class AsyncStorage {
       if (Platform.OS === 'web' && typeof window !== 'undefined' && (window as any).localStorage) {
         data = (window as any).localStorage.getItem(key);
       } else {
-        data = this.storage[key] || null;
+        // Try React Native AsyncStorage first
+        try {
+          const RNAsyncStorage = require('@react-native-async-storage/async-storage').default;
+          data = await RNAsyncStorage.getItem(key);
+        } catch {
+          // Fallback to in-memory storage
+          data = this.storage[key] || null;
+        }
       }
       
       if (data && this.arrayIncludes(this.secureKeys, key)) {
@@ -41,7 +48,15 @@ class AsyncStorage {
         (window as any).localStorage.setItem(key, dataToStore);
         return;
       }
-      this.storage[key] = dataToStore;
+      
+      // Try React Native AsyncStorage first
+      try {
+        const RNAsyncStorage = require('@react-native-async-storage/async-storage').default;
+        await RNAsyncStorage.setItem(key, dataToStore);
+      } catch {
+        // Fallback to in-memory storage
+        this.storage[key] = dataToStore;
+      }
     } catch {
       // Silent fail
     }

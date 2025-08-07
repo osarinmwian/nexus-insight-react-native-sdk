@@ -12,6 +12,8 @@ class DataBridge {
     try {
       const events = await AsyncStorage.getItem('nexus_events');
       const userId = await AsyncStorage.getItem('nexus_user_id');
+      
+      console.log('🔍 Raw storage data:', { events: events?.substring(0, 100), userId });
       const currentScreen = await AsyncStorage.getItem('nexus_current_screen');
       
       console.log('🔄 Syncing to dashboard:', { 
