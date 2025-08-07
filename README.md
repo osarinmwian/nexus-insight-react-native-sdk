@@ -129,3 +129,4 @@ await analytics.clearEvents();
 ## License
 
 MIT# nexus-insight-sdk
+# nexus-insight-react-native-sdk
