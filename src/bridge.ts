@@ -7,30 +7,49 @@ class DataBridge {
       const events = await AsyncStorage.getItem('nexus_events');
       const userId = await AsyncStorage.getItem('nexus_user_id');
       
-      console.log('Syncing to dashboard:', { events: events ? JSON.parse(events).length : 0, userId });
+      console.log('🔄 Syncing to dashboard:', { 
+        eventCount: events ? JSON.parse(events).length : 0, 
+        userId,
+        timestamp: new Date().toISOString()
+      });
       
       // Web sync
       if (typeof window !== 'undefined' && (window as any).localStorage) {
         (window as any).localStorage.setItem('nexus_events', events || '[]');
         (window as any).localStorage.setItem('nexus_user_id', userId || '');
-        console.log('Data synced to localStorage');
+        console.log('💾 Data synced to localStorage');
       }
       
-      // Mobile to web bridge - try to use fetch if available
+      // Mobile to web bridge - try ngrok URL first, then localhost
       if (events && events !== '[]' && typeof fetch !== 'undefined') {
-        try {
-          await fetch('http://localhost:3000/api/sync', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ events: JSON.parse(events), userId })
-          });
-          console.log('Data sent to dashboard API');
-        } catch (e) {
-          console.log('Dashboard API not available, using localStorage fallback');
+        const urls = [
+          'https://82e7aea83708.ngrok-free.app/api/sync',
+          'http://localhost:3000/api/sync'
+        ];
+        
+        for (const url of urls) {
+          try {
+            console.log(`📡 Sending ${JSON.parse(events).length} events to ${url}`);
+            const response = await fetch(url, {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+              },
+              body: JSON.stringify({ events: JSON.parse(events), userId })
+            });
+            
+            if (response.ok) {
+              console.log(`✅ Data sent successfully to ${url}`);
+              break;
+            }
+          } catch (e) {
+            console.log(`❌ Failed to send to ${url}:`, e.message);
+          }
         }
       }
     } catch (error) {
-      console.error('Sync failed:', error);
+      console.error('❌ Sync failed:', error);
     }
   }
 
@@ -79,13 +98,20 @@ class DataBridge {
   }
 
   static startAutoSync(): void {
+    console.log('🚀 Starting auto-sync to dashboard');
+    
     // Immediate sync
     this.syncToDashboard();
     
     // Regular sync every 2 seconds for immediate feedback
-    setInterval(() => {
-      this.syncToDashboard();
-    }, 2000);
+    if (typeof setInterval !== 'undefined') {
+      setInterval(() => {
+        this.syncToDashboard();
+      }, 2000);
+      console.log('✅ Auto-sync interval started (2s)');
+    } else {
+      console.log('⚠️ setInterval not available, using manual sync only');
+    }
   }
 }
 

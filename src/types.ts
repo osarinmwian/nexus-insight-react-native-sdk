@@ -10,6 +10,11 @@ declare global {
   function require(module: string): any;
   function btoa(data: string): string;
   function atob(data: string): string;
+  function fetch(input: string, init?: any): Promise<any>;
+  function setInterval(callback: () => void, ms: number): any;
+  function clearInterval(id: any): void;
+  function setTimeout(callback: () => void, ms: number): any;
+  function clearTimeout(id: any): void;
 }
 
 interface Array<T> {
