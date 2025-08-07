@@ -7,18 +7,30 @@ class DataBridge {
       const events = await AsyncStorage.getItem('nexus_events');
       const userId = await AsyncStorage.getItem('nexus_user_id');
       
+      console.log('Syncing to dashboard:', { events: events ? JSON.parse(events).length : 0, userId });
+      
       // Web sync
       if (typeof window !== 'undefined' && (window as any).localStorage) {
         (window as any).localStorage.setItem('nexus_events', events || '[]');
         (window as any).localStorage.setItem('nexus_user_id', userId || '');
+        console.log('Data synced to localStorage');
       }
       
-      // Mobile sync - create demo events for immediate testing
-      if (!events || JSON.parse(events || '[]').length === 0) {
-        await this.createDemoEvents();
+      // Mobile to web bridge - use fetch to send data to dashboard
+      if (events && events !== '[]') {
+        try {
+          await fetch('http://localhost:3000/api/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ events: JSON.parse(events), userId })
+          });
+          console.log('Data sent to dashboard API');
+        } catch (e) {
+          console.log('Dashboard API not available, using localStorage fallback');
+        }
       }
-    } catch {
-      // Silent fail
+    } catch (error) {
+      console.error('Sync failed:', error);
     }
   }
 
