@@ -5,6 +5,8 @@ import ScreenshotManager from './screenshot';
 import CrashHandler from './crash';
 import SecurityManager from './security';
 import DataBridge from './bridge';
+import OTAManager from './ota';
+import FeatureFlags from './feature-flags';
 import './types';
 
 export interface AnalyticsConfig {
@@ -49,6 +51,7 @@ class NexusInsight {
   private currentScreen: string | null = null;
   private previousScreen: string | null = null;
   private screenStartTime: number = Date.now();
+  private otaConfig: any = null;
 
   constructor(config: AnalyticsConfig) {
     console.log('🔧 Initializing NexusInsight with config:', { apiKey: config.apiKey?.substring(0, 10) + '...', dashboardUrl: config.dashboardUrl });
@@ -114,6 +117,12 @@ class NexusInsight {
       
       // Auto-track app lifecycle events
       this.setupAutoTracking();
+      
+      // Enable real-time OTA updates
+      this.enableRealtimeOTA();
+      
+      // Check for OTA updates
+      this.checkOTAUpdates();
     } catch (error) {
       console.error('NexusInsight initialization failed:', error);
     }
@@ -134,6 +143,11 @@ class NexusInsight {
     if (!this.isInitialized || !this.isValidKey) {
       console.warn('NexusInsight not initialized or invalid API key');
       return;
+    }
+    
+    // Apply OTA config if available
+    if (this.otaConfig?.settings) {
+      this.config = { ...this.config, ...this.otaConfig.settings };
     }
 
     try {
@@ -191,15 +205,56 @@ class NexusInsight {
 
   public async takeScreenshot(viewRef: any): Promise<string | null> {
     if (!this.isValidKey) return null;
+    
+    // Check if auto screenshots are enabled via OTA
+    const autoScreenshots = await FeatureFlags.isEnabled('auto_screenshots');
+    const enhancedTracking = await FeatureFlags.isEnabled('enhanced_tracking');
+    
+    if (autoScreenshots) {
+      console.log('📷 Auto screenshots enabled via OTA');
+    }
+    
     try {
       const uri = await ScreenshotManager.captureView(viewRef);
       if (uri) {
-        await this.trackEvent('screenshot_taken', { screenshotUri: uri });
+        const eventData: any = { 
+          screenshotUri: uri, 
+          autoEnabled: autoScreenshots,
+          enhancedTracking
+        };
+        
+        // Add enhanced data if feature is enabled
+        if (enhancedTracking) {
+          eventData.screenSize = await this.getScreenSize();
+          eventData.memoryUsage = await this.getMemoryUsage();
+        }
+        
+        await this.trackEvent('screenshot_taken', eventData);
       }
       return uri;
     } catch (error) {
       console.error('Screenshot failed:', error);
       return null;
+    }
+  }
+  
+  private async getScreenSize(): Promise<string> {
+    try {
+      const RN = require('react-native');
+      if (RN?.Dimensions) {
+        const { width, height } = RN.Dimensions.get('window');
+        return `${width}x${height}`;
+      }
+    } catch {}
+    return 'unknown';
+  }
+  
+  private async getMemoryUsage(): Promise<number> {
+    try {
+      // This would need native implementation for accurate memory usage
+      return performance?.memory?.usedJSHeapSize || 0;
+    } catch {
+      return 0;
     }
   }
 
@@ -288,6 +343,105 @@ class NexusInsight {
     return keyPattern.test(apiKey);
   }
 
+  private enableRealtimeOTA(): void {
+    try {
+      OTAManager.enableRealtimeUpdates(this.config.apiKey, (update) => {
+        this.otaConfig = update.config;
+        console.log('⚡ Real-time OTA update applied:', update.version);
+        
+        // Trigger immediate re-sync with new config
+        DataBridge.triggerSync();
+        
+        // Re-initialize features with new config
+        this.applyOTAConfig(update.config);
+      });
+    } catch (error) {
+      console.error('Failed to enable real-time OTA:', error);
+    }
+  }
+  
+  private applyOTAConfig(config: any): void {
+    // Apply new settings immediately
+    if (config.settings) {
+      this.config = { ...this.config, ...config.settings };
+    }
+    
+    // Execute any code updates
+    if (config.code) {
+      OTAManager.executeOTACode();
+    }
+    
+    // Update feature flags
+    if (config.features) {
+      config.features.forEach((feature: string) => {
+        FeatureFlags.enable(feature);
+      });
+    }
+  }
+
+  private async checkOTAUpdates(): Promise<void> {
+    try {
+      // Process any scheduled updates first
+      await OTAManager.processScheduledUpdates();
+      
+      const update = await OTAManager.checkForUpdates(this.config.apiKey);
+      if (update) {
+        await this.trackEvent('ota_update_available', { 
+          version: update.version,
+          mandatory: update.mandatory,
+          features: update.config.features
+        });
+        
+        const success = await OTAManager.applyUpdate(update);
+        if (success) {
+          this.otaConfig = await OTAManager.getCurrentConfig();
+          await OTAManager.executeOTACode();
+          await this.trackEvent('ota_update_applied', { 
+            version: update.version,
+            previousVersion: await OTAManager.getCurrentVersion()
+          });
+          
+          // Enable features from OTA config
+          if (update.config.features) {
+            for (const feature of update.config.features) {
+              await FeatureFlags.enable(feature);
+            }
+          }
+        } else {
+          await this.trackEvent('ota_update_failed', { 
+            version: update.version,
+            error: 'Application failed'
+          });
+        }
+      }
+    } catch (error) {
+      await this.trackEvent('ota_check_error', { error: error.message });
+    }
+  }
+  
+  public async checkOTAUpdates(): Promise<void> {
+    return this.checkOTAUpdates();
+  }
+  
+  public async rollbackOTA(targetVersion?: string): Promise<boolean> {
+    try {
+      const success = await OTAManager.rollback(this.config.apiKey, targetVersion);
+      await this.trackEvent('ota_rollback', { 
+        success,
+        targetVersion,
+        currentVersion: await OTAManager.getCurrentVersion()
+      });
+      return success;
+    } catch (error) {
+      await this.trackEvent('ota_rollback_error', { error: error.message });
+      return false;
+    }
+  }
+  
+  public async getOTAHistory(): Promise<any[]> {
+    return await OTAManager.getUpdateHistory();
+  }
+
   private setupAutoTracking(): void {
     if (!this.isValidKey) return;
     
@@ -295,24 +449,40 @@ class NexusInsight {
       const RN = require('react-native');
       
       if (RN.AppState) {
-        RN.AppState.addEventListener('change', (nextAppState: string) => {
+        RN.AppState.addEventListener('change', async (nextAppState: string) => {
           if (nextAppState === 'active') {
-            this.trackEvent('app_foreground');
+            await this.trackEvent('app_foreground');
+            // Check for OTA updates when app becomes active
+            this.checkOTAUpdates();
           } else if (nextAppState === 'background') {
-            this.trackEvent('app_background');
+            await this.trackEvent('app_background');
           }
         });
       }
       
       if (RN.Dimensions) {
-        RN.Dimensions.addEventListener('change', ({ window }: any) => {
-          this.trackEvent('orientation_change', {
+        RN.Dimensions.addEventListener('change', async ({ window }: any) => {
+          const enhancedTracking = await FeatureFlags.isEnabled('enhanced_tracking');
+          const eventData: any = {
             width: window.width,
             height: window.height,
             orientation: window.width > window.height ? 'landscape' : 'portrait'
-          });
+          };
+          
+          if (enhancedTracking) {
+            eventData.aspectRatio = (window.width / window.height).toFixed(2);
+            eventData.screenDensity = window.scale || 1;
+          }
+          
+          await this.trackEvent('orientation_change', eventData);
         });
       }
+      
+      // Set up periodic OTA checks
+      setInterval(() => {
+        this.checkOTAUpdates();
+      }, 6 * 60 * 60 * 1000); // Every 6 hours
+      
     } catch {
       // Auto-tracking not available
     }
