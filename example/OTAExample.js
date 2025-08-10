@@ -19,8 +19,8 @@ const OTAExample = () => {
     try {
       // Initialize with OTA-enabled SDK
       const sdk = new NexusInsight({
-        apiKey: 'nxs_test_demo12345678',
-        dashboardUrl: 'http://localhost:3000'
+        apiKey: 'nxs_test_abcd12345678',
+        dashboardUrl: 'https://c218c3304d38.ngrok-free.app'
       });
 
       setAnalytics(sdk);
