@@ -52,6 +52,7 @@ class NexusInsight {
   private previousScreen: string | null = null;
   private screenStartTime: number = Date.now();
   private otaConfig: any = null;
+  public onOTAUpdate: ((update: any) => void) | null = null;
 
   constructor(config: AnalyticsConfig) {
     console.log('🔧 Initializing NexusInsight with config:', { apiKey: config.apiKey?.substring(0, 10) + '...', dashboardUrl: config.dashboardUrl });
@@ -354,6 +355,11 @@ class NexusInsight {
         
         // Re-initialize features with new config
         this.applyOTAConfig(update.config);
+        
+        // Notify app about the update
+        if (this.onOTAUpdate) {
+          this.onOTAUpdate(update);
+        }
       });
     } catch (error) {
       console.error('Failed to enable real-time OTA:', error);

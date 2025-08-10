@@ -7,6 +7,9 @@ const OTAExample = () => {
   const [analytics, setAnalytics] = useState(null);
   const [otaHistory, setOtaHistory] = useState([]);
   const [currentVersion, setCurrentVersion] = useState('1.0.0');
+  const [updateStatus, setUpdateStatus] = useState('No updates');
+  const [lastUpdate, setLastUpdate] = useState(null);
+  const [appliedFeatures, setAppliedFeatures] = useState([]);
 
   useEffect(() => {
     initializeSDK();
@@ -26,8 +29,22 @@ const OTAExample = () => {
       const history = await sdk.getOTAHistory();
       setOtaHistory(history);
       
+      // Set up real-time update listener
+      sdk.onOTAUpdate = (update) => {
+        setLastUpdate(update);
+        setUpdateStatus(`✅ Applied v${update.version}`);
+        setAppliedFeatures(update.config.features || []);
+        Alert.alert('🚀 OTA Update Applied!', `Version ${update.version} is now active`);
+      };
+      
       // Track initialization
       await sdk.trackEvent('ota_example_initialized');
+      
+      // Start checking for updates every 10 seconds (for demo)
+      setInterval(async () => {
+        await sdk.checkOTAUpdates();
+      }, 10000);
+      
     } catch (error) {
       console.error('SDK initialization failed:', error);
     }
@@ -109,7 +126,28 @@ const OTAExample = () => {
         <Text>SDK Version: {currentVersion}</Text>
         <Text>Updates Applied: {otaHistory.filter(h => h.success).length}</Text>
         <Text>Last Check: {new Date().toLocaleTimeString()}</Text>
+        <Text style={{ color: lastUpdate ? '#28a745' : '#6c757d', fontWeight: 'bold' }}>
+          {updateStatus}
+        </Text>
+        {lastUpdate && (
+          <Text style={{ fontSize: 12, color: '#666', marginTop: 5 }}>
+            Last update: {new Date(lastUpdate.timestamp).toLocaleString()}
+          </Text>
+        )}
       </View>
+      
+      {appliedFeatures.length > 0 && (
+        <View style={{ backgroundColor: '#d4edda', padding: 15, borderRadius: 8, marginBottom: 20, borderLeft: '4px solid #28a745' }}>
+          <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#155724', marginBottom: 10 }}>
+            🎆 Active Features (via OTA)
+          </Text>
+          {appliedFeatures.map((feature, index) => (
+            <Text key={index} style={{ color: '#155724', marginBottom: 3 }}>
+              • {feature.replace('_', ' ').toUpperCase()}
+            </Text>
+          ))}
+        </View>
+      )}
 
       <View style={{ backgroundColor: 'white', padding: 15, borderRadius: 8, marginBottom: 20 }}>
         <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 15 }}>
